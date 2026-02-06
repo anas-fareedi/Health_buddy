@@ -2,7 +2,7 @@
 
 ## future enhancements 
 ### (adding bean-balance feature) 
-rack food and lifestyle for kidney disease
+Track food and lifestyle for kidney disease
 
 A medical chatbot powered by Google Gemini AI and Pinecone vector database for intelligent question-answering based on medical documents.
 
