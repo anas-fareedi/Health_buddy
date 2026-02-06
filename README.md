@@ -1,10 +1,8 @@
-# Health_buddy
-Universal Health Access via Chatbot
-## adding bean-balance feature also 
-rack food and life style for kidney disease
-updated soon using langchain
+# Health_buddy (End-to-end-Medical-Chatbot-Generative-AI)
 
-# End-to-end-Medical-Chatbot-Generative-AI
+## future enhancements 
+###(adding bean-balance feature) 
+rack food and lifestyle for kidney disease
 
 A medical chatbot powered by Google Gemini AI and Pinecone vector database for intelligent question-answering based on medical documents.
 
