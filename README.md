@@ -15,6 +15,10 @@ A medical chatbot powered by Google Gemini AI and Pinecone vector database for i
 - ⚡ Real-time responses with loading indicators
 - 🛡️ Input validation and error handling
 
+### Images
+
+<img width="1826" height="894" alt="Screenshot 2026-02-06 205215" src="https://github.com/user-attachments/assets/af358638-488b-4434-93f8-9d009c48f209" />
+
 # How to run?
 ### STEPS:
 
