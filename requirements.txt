@@ -13,4 +13,5 @@ pinecone[grpc]
 google-generativeai
 huggingface-hub
 gunicorn
+torch
 -e .
