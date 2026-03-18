@@ -1,17 +1,33 @@
-sentence-transformers
+# sentence-transformers
+# langchain
+# langchain-core
+# langchain-text-splitters
+# langchain-community
+# langchain-pinecone
+# langchain-google-genai
+# langchain-huggingface
+# flask
+# pypdf
+# python-dotenv
+# pinecone[grpc]
+# google-generativeai
+# huggingface-hub
+# gunicorn
+# torch
+# -e .
+flask
+gunicorn==21.2.0
 langchain
+langchain-community
 langchain-core
 langchain-text-splitters
-langchain-community
 langchain-pinecone
 langchain-google-genai
 langchain-huggingface
-flask
-pypdf
-python-dotenv
+sentence-transformers==2.2.2
+torch==2.0.1
 pinecone[grpc]
 google-generativeai
 huggingface-hub
-gunicorn
-torch
--e .
+pypdf
+python-dotenv
