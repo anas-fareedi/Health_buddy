@@ -16,7 +16,7 @@
 # torch
 # -e .
 flask
-gunicorn==21.2.0
+gunicorn
 langchain
 langchain-community
 langchain-core
@@ -24,8 +24,8 @@ langchain-text-splitters
 langchain-pinecone
 langchain-google-genai
 langchain-huggingface
-sentence-transformers==2.2.2
-torch==2.0.1
+sentence-transformers
+torch
 pinecone[grpc]
 google-generativeai
 huggingface-hub
