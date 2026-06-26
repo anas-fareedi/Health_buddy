@@ -46,6 +46,18 @@ try:
     if index_name in existing_indexes:
         logger.warning(f"Index '{index_name}' already exists. Deleting old index...")
         pc.delete_index(index_name)
+        
+        # Wait for deletion to complete asynchronously
+        import time
+        max_wait = 60  # max 60 seconds
+        wait_interval = 2
+        elapsed = 0
+        while index_name in [idx.name for idx in pc.list_indexes()]:
+            if elapsed >= max_wait:
+                raise TimeoutError(f"Timeout waiting for index '{index_name}' deletion.")
+            logger.info("Waiting for old index deletion to complete...")
+            time.sleep(wait_interval)
+            elapsed += wait_interval
         logger.info(f"Old index '{index_name}' deleted")
     
     logger.info(f"Creating new index '{index_name}'...")

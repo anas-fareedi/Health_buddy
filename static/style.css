@@ -11,7 +11,9 @@ body,html{
 	margin-bottom: auto;
 }
 .card{
-	height: 500px;
+	height: 80vh;
+	min-height: 500px;
+	max-height: 800px;
 	border-radius: 15px !important;
 	background-color: rgba(0,0,0,0.4) !important;
 }
@@ -153,6 +155,7 @@ border-radius: 0 0 15px 15px !important;
 	background-color: rgb(82, 172, 255);
 	padding: 10px;
 	position: relative;
+	color: white;
 }
 .msg_cotainer_send{
 	margin-top: auto;
@@ -162,6 +165,7 @@ border-radius: 0 0 15px 15px !important;
 	background-color: #58cc71;
 	padding: 10px;
 	position: relative;
+	color: white;
 }
 .msg_time{
 	position: absolute;
