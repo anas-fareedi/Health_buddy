@@ -1,14 +1,15 @@
-"""
-Configuration management for Health Buddy application
-"""
 import os
 from datetime import timedelta
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 
 class Config:
     """Base configuration"""
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-key-change-in-production")
-    FLASK_ENV = os.environ.get("FLASK_ENV", "production")
+    SECRET_KEY = os.environ.get("SECRET_KEY")
+    FLASK_ENV = os.environ.get("FLASK_ENV")
     DEBUG = False
     TESTING = False
     
@@ -58,9 +59,12 @@ class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
     TESTING = False
-    SECRET_KEY = os.environ.get("SECRET_KEY")
-    if not SECRET_KEY:
-        raise ValueError("SECRET_KEY environment variable must be set in production")
+    
+    def __init__(self):
+        super().__init__()
+        if not self.SECRET_KEY:
+            raise ValueError("SECRET_KEY environment variable must be set in production")
+
 
 
 class TestingConfig(Config):
@@ -72,7 +76,7 @@ class TestingConfig(Config):
 
 def get_config():
     """Get configuration based on FLASK_ENV"""
-    env = os.environ.get("FLASK_ENV", "production")
+    env = os.environ.get("FLASK_ENV", "development")
     
     if env == "development":
         return DevelopmentConfig()

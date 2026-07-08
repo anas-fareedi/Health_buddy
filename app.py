@@ -1,19 +1,31 @@
+from dotenv import load_dotenv
+import os
+import sys
+
+# When running directly (python app.py), force development mode BEFORE
+# load_dotenv() so the .env value of FLASK_ENV=production cannot activate
+# Talisman's HTTPS redirect on the local dev server.
+# load_dotenv() respects existing env vars by default (override=False).
+if not os.environ.get("_FLASK_ENV_LOCKED"):
+    os.environ["FLASK_ENV"] = "development"
+    os.environ["_FLASK_ENV_LOCKED"] = "1"
+
+# Load environment variables (will NOT overwrite FLASK_ENV we just set)
+load_dotenv()
+
 from flask import Flask, render_template, jsonify, request, abort
+from flask.json.provider import DefaultJSONProvider
 from flask_talisman import Talisman
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+
 from src.helper import download_hugging_face_embeddings
 from langchain_pinecone import Pinecone
 from langchain_google_genai import ChatGoogleGenerativeAI
-from dotenv import load_dotenv
 from src.prompt import *
 from config import get_config
-import os
 import logging
 from logging.handlers import RotatingFileHandler
-
-# Load environment variables
-load_dotenv()
 
 # Get configuration
 config = get_config()
@@ -54,12 +66,32 @@ csp = {
     ]
 }
 
-Talisman(
-    app,
-    content_security_policy=csp,
-    force_https=not config.DEBUG
-)
-app.config['JSON_SORT_KEYS'] = False
+# Determine environment — default to development for local runs.
+# .env may have FLASK_ENV=production which would activate Talisman and
+# break local HTTP access, so we respect it ONLY when explicitly intended.
+_flask_env = os.environ.get("FLASK_ENV", "development")
+print(f"[STARTUP] FLASK_ENV = {_flask_env!r}")
+
+# Only apply Talisman security headers in production.
+# In development the Flask dev server has no SSL certificate, so Talisman
+# would force HTTPS → ERR_SSL_PROTOCOL_ERROR / WRONG_VERSION_NUMBER.
+# Additionally, once Talisman sets HSTS headers the browser caches them and
+# ALL future requests on that host:port are auto-upgraded to HTTPS even after
+# Talisman is removed.  Changing the port is the only way to escape the cache.
+if _flask_env == "production":
+    force_https = os.environ.get("FORCE_HTTPS", "false").lower() == "true"
+    Talisman(
+        app,
+        content_security_policy=csp,
+        force_https=force_https
+    )
+    print(f"[STARTUP] Talisman ENABLED  (force_https={force_https})")
+else:
+    print("[STARTUP] Talisman DISABLED (development mode)")
+
+
+# Flask 3.x removed JSON_SORT_KEYS config key — use DefaultJSONProvider instead
+DefaultJSONProvider.sort_keys = False
 
 # Rate limiting
 limiter = Limiter(
@@ -177,6 +209,9 @@ def internal_error(error):
     return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == '__main__':
-    debug_mode = os.environ.get("FLASK_ENV") == "development"
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=debug_mode)
+    # HARDCODE port 5000 for local dev — do NOT read from PORT env var.
+    # Port 8080 (from .env) has a poisoned HSTS cache in the browser from
+    # prior Talisman runs, causing ERR_SSL_PROTOCOL_ERROR on every request.
+    port = 5000
+    print(f"[STARTUP] Server starting on http://127.0.0.1:{port}")
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)

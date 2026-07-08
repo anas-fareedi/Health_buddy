@@ -19,69 +19,71 @@ if not PINECONE_API_KEY:
 
 os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
 
-try:
-    logger.info("Loading PDF files from Data/ directory...")
-    extracted_data = load_pdf_file(data='Data/')
-    logger.info(f"Loaded {len(extracted_data)} documents")
-    
-    logger.info("Splitting text into chunks...")
-    text_chunks = text_split(extracted_data)
-    logger.info(f"Created {len(text_chunks)} text chunks")
-    
-    logger.info("Loading embeddings model...")
-    embeddings = download_hugging_face_embeddings()
-    logger.info("Embeddings model loaded successfully")
-except Exception as e:
-    logger.error(f"Error during data preparation: {str(e)}")
-    raise
+if __name__ == "__main__":
+    import time
 
-try:
-    pc = PineconeClient(api_key=PINECONE_API_KEY)
-    
-    index_name = "medicalbot"
-    
-    # Check if index already exists
-    existing_indexes = [index.name for index in pc.list_indexes()]
-    
-    if index_name in existing_indexes:
-        logger.warning(f"Index '{index_name}' already exists. Deleting old index...")
-        pc.delete_index(index_name)
-        
-        # Wait for deletion to complete asynchronously
-        import time
-        max_wait = 60  # max 60 seconds
-        wait_interval = 2
-        elapsed = 0
-        while index_name in [idx.name for idx in pc.list_indexes()]:
-            if elapsed >= max_wait:
-                raise TimeoutError(f"Timeout waiting for index '{index_name}' deletion.")
-            logger.info("Waiting for old index deletion to complete...")
-            time.sleep(wait_interval)
-            elapsed += wait_interval
-        logger.info(f"Old index '{index_name}' deleted")
-    
-    logger.info(f"Creating new index '{index_name}'...")
-    pc.create_index(
-        name=index_name,
-        dimension=384, 
-        metric="cosine", 
-        spec=ServerlessSpec(
-            cloud="aws", 
-            region="us-east-1"
-        ) 
-    )
-    logger.info(f"Index '{index_name}' created successfully")
-    
-    # Embed each chunk and upsert the embeddings into your Pinecone index.
-    logger.info("Upserting embeddings to Pinecone...")
-    docsearch = Pinecone.from_documents(
-        documents=text_chunks,
-        index_name=index_name,
-        embedding=embeddings, 
-    )
-    logger.info("Embeddings uploaded to Pinecone successfully!")
-    logger.info(f"Total vectors stored: {len(text_chunks)}")
-    
-except Exception as e:
-    logger.error(f"Error during Pinecone operations: {str(e)}")
-    raise
+    try:
+        logger.info("Loading PDF files from Data/ directory...")
+        extracted_data = load_pdf_file(data='Data/')
+        logger.info(f"Loaded {len(extracted_data)} documents")
+
+        logger.info("Splitting text into chunks...")
+        text_chunks = text_split(extracted_data)
+        logger.info(f"Created {len(text_chunks)} text chunks")
+
+        logger.info("Loading embeddings model...")
+        embeddings = download_hugging_face_embeddings()
+        logger.info("Embeddings model loaded successfully")
+    except Exception as e:
+        logger.error(f"Error during data preparation: {str(e)}")
+        raise
+
+    try:
+        pc = PineconeClient(api_key=PINECONE_API_KEY)
+
+        index_name = "medicalbot"
+
+        # Check if index already exists
+        existing_indexes = [index.name for index in pc.list_indexes()]
+
+        if index_name in existing_indexes:
+            logger.warning(f"Index '{index_name}' already exists. Deleting old index...")
+            pc.delete_index(index_name)
+
+            # Wait for deletion to complete asynchronously
+            max_wait = 60  # max 60 seconds
+            wait_interval = 2
+            elapsed = 0
+            while index_name in [idx.name for idx in pc.list_indexes()]:
+                if elapsed >= max_wait:
+                    raise TimeoutError(f"Timeout waiting for index '{index_name}' deletion.")
+                logger.info("Waiting for old index deletion to complete...")
+                time.sleep(wait_interval)
+                elapsed += wait_interval
+            logger.info(f"Old index '{index_name}' deleted")
+
+        logger.info(f"Creating new index '{index_name}'...")
+        pc.create_index(
+            name=index_name,
+            dimension=384,
+            metric="cosine",
+            spec=ServerlessSpec(
+                cloud="aws",
+                region="us-east-1"
+            )
+        )
+        logger.info(f"Index '{index_name}' created successfully")
+
+        # Embed each chunk and upsert the embeddings into your Pinecone index.
+        logger.info("Upserting embeddings to Pinecone...")
+        docsearch = Pinecone.from_documents(
+            documents=text_chunks,
+            index_name=index_name,
+            embedding=embeddings,
+        )
+        logger.info("Embeddings uploaded to Pinecone successfully!")
+        logger.info(f"Total vectors stored: {len(text_chunks)}")
+
+    except Exception as e:
+        logger.error(f"Error during Pinecone operations: {str(e)}")
+        raise

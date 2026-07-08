@@ -43,7 +43,7 @@
 			</div>
 		</div>
 		
-		<script nonce="{{ csp_nonce() }}">
+		<script{% if csp_nonce is defined %} nonce="{{ csp_nonce() }}"{% endif %}>
 			$(document).ready(function() {
 				// Auto scroll to bottom
 				function scrollToBottom() {

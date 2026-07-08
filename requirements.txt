@@ -1,32 +1,38 @@
 # Core Framework
-Flask==3.0.0
-Flask-Talisman==1.1.0
-python-dotenv==1.0.0
+# Flask 3.1.x and Werkzeug 3.1.x must stay in sync —
+# Werkzeug 3.1 removed internal APIs that Flask 3.0 relied on.
+Flask>=3.1.0
+Flask-Talisman>=1.1.0
+Werkzeug>=3.1.0
+python-dotenv>=1.0.0
 
 # LangChain and AI
-langchain==0.1.0
-langchain-core==0.1.0
-langchain-community==0.0.20
-langchain-text-splitters==0.0.1
-langchain-pinecone==0.1.0
-langchain-google-genai==0.0.14
-langchain-huggingface==0.0.48
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-community>=0.2.0
+langchain-text-splitters>=0.2.0
+langchain-pinecone>=0.1.0
+langchain-huggingface>=0.0.1
+langchain-google-genai>=1.0.0
 
 # Vector DB and Embeddings
-pinecone-client==3.0.0
-sentence-transformers==2.2.2
+pinecone-client>=3.0.0
+# sentence-transformers 2.7+ required for torch 2.x compatibility
+sentence-transformers>=2.7.0
 
 # Google AI
-google-generativeai==0.3.0
+google-generativeai>=0.3.0
 
 # Utilities
-pypdf==4.0.1
-huggingface-hub==0.20.0
-torch==2.1.0
+pypdf>=4.0.1
+huggingface-hub>=0.20.0
+# torch is intentionally unpinned — pip will resolve the correct
+# wheel for the Python 3.11 / CUDA combination at install time.
+# For GPU: pip install torch --index-url https://download.pytorch.org/whl/cu118
+torch>=2.1.0
 
 # WSGI Server
-gunicorn==21.2.0
+gunicorn>=21.2.0
 
 # Security
-flask-limiter==3.5.0
-Werkzeug==3.0.0
+flask-limiter>=3.5.0
