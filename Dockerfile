@@ -29,8 +29,9 @@ COPY requirements-render.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements-render.txt
 
-# Copy application code
+# Copy application code and ensure appuser owns everything
 COPY --chown=appuser:appuser . .
+RUN chown appuser:appuser /app
 
 # Switch to non-root user
 USER appuser

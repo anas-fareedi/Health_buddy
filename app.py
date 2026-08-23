@@ -25,11 +25,20 @@ config = get_config()
 
 # Configure logging
 log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-log_handler = RotatingFileHandler(
-    config.LOG_FILE,
-    maxBytes=config.LOG_MAX_BYTES,
-    backupCount=config.LOG_BACKUP_COUNT
-)
+
+if config.FLASK_ENV == "production":
+    # Production (Render): log to stdout — Render captures it automatically.
+    # File logging is pointless on ephemeral containers and causes PermissionError
+    # when running as non-root user.
+    log_handler = logging.StreamHandler(sys.stdout)
+else:
+    # Development: log to rotating file
+    log_handler = RotatingFileHandler(
+        config.LOG_FILE,
+        maxBytes=config.LOG_MAX_BYTES,
+        backupCount=config.LOG_BACKUP_COUNT
+    )
+
 log_handler.setFormatter(log_formatter)
 logger = logging.getLogger(__name__)
 logger.addHandler(log_handler)
@@ -39,24 +48,28 @@ logger.setLevel(logging.INFO)
 app = Flask(__name__)
 app.config.from_object(config)
 
-# Security headers
+# Security headers — must whitelist all CDN domains used in chat.html
 csp = {
     'default-src': "'self'",
     'style-src': [
         "'self'",
         'https://fonts.googleapis.com',
         'https://cdnjs.cloudflare.com',
-        'https://cdn.jsdelivr.net'
+        'https://cdn.jsdelivr.net',
+        'https://stackpath.bootstrapcdn.com',
+        'https://use.fontawesome.com'
     ],
     'font-src': [
         "'self'",
         'https://fonts.gstatic.com',
-        'https://cdnjs.cloudflare.com'
+        'https://cdnjs.cloudflare.com',
+        'https://use.fontawesome.com'
     ],
     'script-src': [
         "'self'",
         'https://cdn.jsdelivr.net',
-        'https://cdnjs.cloudflare.com'
+        'https://cdnjs.cloudflare.com',
+        'https://ajax.googleapis.com'
     ],
     'img-src': [
         "'self'",
