@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: health-buddy
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    repo: https://github.com/anas-fareedi/Health_buddy
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: HF_TOKEN
+        sync: false
+      - key: PINECONE_INDEX
+        value: medicalbot
+      - key: FORCE_HTTPS
+        value: "true"

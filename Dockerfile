@@ -1,7 +1,7 @@
-# Production Dockerfile for Health Buddy Medical Chatbot
+# Production Dockerfile for Health Buddy Medical Chatbot (Render-optimized)
 FROM python:3.11-slim
 
-# Set environment variables (restrict PyTorch thread pools to prevent memory spikes on 512MB RAM)
+# Set environment variables (restrict thread pools to prevent memory spikes on 512MB RAM)
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -22,13 +22,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser
 
-# Copy requirements file
-COPY requirements.txt .
+# Copy requirements file (Render-specific: excludes PyTorch to stay under 512MB)
+COPY requirements-render.txt .
 
 # Install Python dependencies
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install gunicorn
+    pip install --no-cache-dir -r requirements-render.txt
 
 # Copy application code
 COPY --chown=appuser:appuser . .
@@ -43,5 +42,9 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import os, urllib.request; port=os.environ.get('PORT', '8080'); urllib.request.urlopen(f'http://localhost:{port}/health', timeout=5)" || exit 1
 
-# Run with gunicorn (bound dynamically to $PORT, 1 worker, 4 threads for 512MB RAM compatibility)
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --threads 4 --timeout 120 --access-logfile - --error-logfile - wsgi:app"]
+# Run with gunicorn:
+#   --preload: loads the app in the master process BEFORE forking workers,
+#              so the port binds immediately (fixes Render's port scan timeout)
+#   --workers 1 --threads 2: minimal footprint for 512MB RAM
+#   --worker-class gthread: explicit threaded worker class
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --threads 2 --worker-class gthread --preload --timeout 120 --access-logfile - --error-logfile - wsgi:app"]
