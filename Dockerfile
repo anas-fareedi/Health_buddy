@@ -1,11 +1,15 @@
 # Production Dockerfile for Health Buddy Medical Chatbot
 FROM python:3.11-slim
 
-# Set environment variables
+# Set environment variables (restrict PyTorch thread pools to prevent memory spikes on 512MB RAM)
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    FLASK_ENV=production
+    FLASK_ENV=production \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    TORCH_NUM_THREADS=1
 
 # Set work directory
 WORKDIR /app
