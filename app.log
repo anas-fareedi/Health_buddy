@@ -42,3 +42,47 @@
 2026-07-08 11:55:57,931 - __main__ - INFO - Processing user question
 2026-07-08 11:55:59,648 - __main__ - INFO - Retrieved 3 documents
 2026-07-08 11:56:05,059 - __main__ - INFO - Response generated successfully
+2026-08-23 15:56:45,446 - __main__ - INFO - Embeddings model loaded successfully
+2026-08-23 15:56:48,980 - __main__ - INFO - Connected to Pinecone index: medicalbot
+2026-08-23 15:56:49,053 - __main__ - INFO - Gemini model initialized successfully
+2026-08-23 15:58:16,939 - __main__ - WARNING - 404 error: /favicon.ico
+2026-08-23 15:58:20,256 - __main__ - INFO - Processing user question
+2026-08-23 15:58:21,818 - __main__ - INFO - Retrieved 3 documents
+2026-08-23 15:58:22,865 - __main__ - INFO - Response generated successfully
+2026-08-23 15:58:41,240 - __main__ - INFO - Processing user question
+2026-08-23 15:58:41,551 - __main__ - INFO - Retrieved 3 documents
+2026-08-23 15:58:42,888 - __main__ - INFO - Response generated successfully
+2026-08-23 16:03:14,466 - __main__ - INFO - Embeddings model loaded successfully
+2026-08-23 16:03:16,278 - __main__ - INFO - Connected to Pinecone index: medicalbot
+2026-08-23 16:03:16,326 - __main__ - INFO - Gemini model initialized successfully
+2026-08-23 16:03:41,894 - __main__ - INFO - Embeddings model loaded successfully
+2026-08-23 16:03:43,753 - __main__ - INFO - Connected to Pinecone index: medicalbot
+2026-08-23 16:03:43,823 - __main__ - INFO - Gemini model initialized successfully
+2026-08-23 16:03:54,363 - __main__ - INFO - Processing user question
+2026-08-23 16:03:55,991 - __main__ - INFO - Retrieved 3 documents
+2026-08-23 16:03:57,803 - __main__ - INFO - Response generated successfully
+2026-08-23 16:04:59,923 - __main__ - INFO - Processing user question
+2026-08-23 16:05:00,990 - __main__ - INFO - Retrieved 3 documents
+2026-08-23 16:05:02,710 - __main__ - INFO - Response generated successfully
+2026-08-23 16:05:19,500 - __main__ - INFO - Processing user question
+2026-08-23 16:05:19,807 - __main__ - INFO - Retrieved 3 documents
+2026-08-23 16:05:21,611 - __main__ - INFO - Response generated successfully
+2026-08-23 16:08:21,673 - __main__ - INFO - Embeddings model loaded successfully
+2026-08-23 16:08:23,892 - __main__ - INFO - Connected to Pinecone index: medicalbot
+2026-08-23 16:08:23,925 - __main__ - INFO - Gemini model initialized successfully
+2026-08-23 16:10:35,294 - __main__ - INFO - Embeddings model loaded successfully
+2026-08-23 16:10:38,144 - __main__ - INFO - Connected to Pinecone index: medicalbot
+2026-08-23 16:10:38,184 - __main__ - INFO - Gemini model initialized successfully
+2026-08-23 16:10:58,776 - __main__ - INFO - Embeddings model loaded successfully
+2026-08-23 16:11:01,480 - __main__ - INFO - Connected to Pinecone index: medicalbot
+2026-08-23 16:11:01,514 - __main__ - INFO - Gemini model initialized successfully
+2026-08-23 16:20:14,149 - __main__ - INFO - Embeddings model loaded successfully
+2026-08-23 16:20:17,153 - __main__ - INFO - Connected to Pinecone index: medicalbot
+2026-08-23 16:20:17,204 - __main__ - INFO - Gemini model initialized successfully
+2026-08-23 16:20:26,988 - __main__ - INFO - Retrieving documents for streaming user query
+2026-08-23 16:20:29,015 - __main__ - INFO - Retrieved 3 documents from Pinecone
+2026-08-23 16:20:29,020 - __main__ - INFO - Streaming Gemini LLM tokens...
+2026-08-23 16:20:30,465 - __main__ - INFO - Token streaming completed successfully
+2026-08-23 20:08:19,771 - __main__ - INFO - Embeddings model loaded successfully
+2026-08-23 20:08:22,927 - __main__ - INFO - Connected to Pinecone index: medicalbot
+2026-08-23 20:08:22,972 - __main__ - INFO - Gemini model initialized successfully
