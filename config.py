@@ -8,8 +8,8 @@ load_dotenv()
 
 class Config:
     """Base configuration"""
-    SECRET_KEY = os.environ.get("SECRET_KEY")
-    FLASK_ENV = os.environ.get("FLASK_ENV")
+    SECRET_KEY = os.environ.get("SECRET_KEY", "health-buddy-production-secret-key-default")
+    FLASK_ENV = os.environ.get("FLASK_ENV", "production")
     DEBUG = False
     TESTING = False
     
@@ -19,7 +19,7 @@ class Config:
     
     # Model Configuration
     PINECONE_INDEX = os.environ.get("PINECONE_INDEX", "medicalbot")
-    GEMINI_MODEL = "gemini-2.5-flash-lite"
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
     GEMINI_TEMPERATURE = 0.1
     GEMINI_MAX_TOKENS = 6000
     

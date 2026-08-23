@@ -15,10 +15,8 @@ langchain-pinecone>=0.1.0
 langchain-huggingface>=0.0.1
 langchain-google-genai>=1.0.0
 
-# Vector DB and Embeddings
+# Vector DB (client only — no local model loading)
 pinecone-client>=3.0.0
-# sentence-transformers 2.7+ required for torch 2.x compatibility
-sentence-transformers>=2.7.0
 
 # Google AI
 google-generativeai>=0.3.0
@@ -26,10 +24,10 @@ google-generativeai>=0.3.0
 # Utilities
 pypdf>=4.0.1
 huggingface-hub>=0.20.0
-# torch is intentionally unpinned — pip will resolve the correct
-# wheel for the Python 3.11 / CUDA combination at install time.
-# For GPU: pip install torch --index-url https://download.pytorch.org/whl/cu118
-torch>=2.1.0
+
+# NOTE: torch and sentence-transformers are intentionally excluded for cloud deployment.
+# On Render's 512MB RAM tier, PyTorch alone exceeds memory limit.
+# Embeddings are served via HuggingFace Inference API (requires HF_TOKEN).
 
 # WSGI Server
 gunicorn>=21.2.0
