@@ -39,5 +39,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=5)" || exit 1
 
-# Run with gunicorn
-CMD ["gunicorn", "--workers=4", "--worker-class=sync", "--bind=0.0.0.0:8080", "--timeout=120", "--access-logfile=-", "--error-logfile=-", "wsgi:app"]
+# Run with gunicorn (1 worker, 4 threads, --preload for 512MB RAM optimization)
+CMD ["gunicorn", "--workers=1", "--threads=4", "--preload", "--bind=0.0.0.0:8080", "--timeout=120", "--access-logfile=-", "--error-logfile=-", "wsgi:app"]
