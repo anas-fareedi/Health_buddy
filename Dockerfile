@@ -35,9 +35,9 @@ USER appuser
 # Expose port
 EXPOSE 8080
 
-# Health check
+# Health check using dynamic PORT environment variable
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=5)" || exit 1
+    CMD python -c "import os, urllib.request; port=os.environ.get('PORT', '8080'); urllib.request.urlopen(f'http://localhost:{port}/health', timeout=5)" || exit 1
 
-# Run with gunicorn (1 worker, 4 threads, --preload for 512MB RAM optimization)
-CMD ["gunicorn", "--workers=1", "--threads=4", "--preload", "--bind=0.0.0.0:8080", "--timeout=120", "--access-logfile=-", "--error-logfile=-", "wsgi:app"]
+# Run with gunicorn (bound dynamically to $PORT, 1 worker, 4 threads for 512MB RAM compatibility)
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --threads 4 --timeout 120 --access-logfile - --error-logfile - wsgi:app"]

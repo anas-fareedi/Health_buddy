@@ -1,19 +1,12 @@
-from dotenv import load_dotenv
 import os
 import sys
+import json
+from dotenv import load_dotenv
 
-# When running directly (python app.py), force development mode BEFORE
-# load_dotenv() so the .env value of FLASK_ENV=production cannot activate
-# Talisman's HTTPS redirect on the local dev server.
-# load_dotenv() respects existing env vars by default (override=False).
-if not os.environ.get("_FLASK_ENV_LOCKED"):
-    os.environ["FLASK_ENV"] = "development"
-    os.environ["_FLASK_ENV_LOCKED"] = "1"
-
-# Load environment variables (will NOT overwrite FLASK_ENV we just set)
+# Load environment variables
 load_dotenv()
 
-from flask import Flask, render_template, jsonify, request, abort
+from flask import Flask, render_template, jsonify, request, abort, Response, stream_with_context
 from flask.json.provider import DefaultJSONProvider
 from flask_talisman import Talisman
 from flask_limiter import Limiter
@@ -47,37 +40,35 @@ app = Flask(__name__)
 app.config.from_object(config)
 
 # Security headers
-# Force HTTPS only in production, allow specific external CDNs and images in CSP
 csp = {
     'default-src': "'self'",
     'style-src': [
         "'self'",
-        'https://stackpath.bootstrapcdn.com',
-        'https://use.fontawesome.com'
+        'https://fonts.googleapis.com',
+        'https://cdnjs.cloudflare.com',
+        'https://cdn.jsdelivr.net'
+    ],
+    'font-src': [
+        "'self'",
+        'https://fonts.gstatic.com',
+        'https://cdnjs.cloudflare.com'
     ],
     'script-src': [
         "'self'",
-        'https://ajax.googleapis.com'
+        'https://cdn.jsdelivr.net',
+        'https://cdnjs.cloudflare.com'
     ],
     'img-src': [
         "'self'",
         'https://cdn-icons-png.flaticon.com',
-        'https://i.ibb.co'
+        'https://i.ibb.co',
+        'data:'
     ]
 }
 
-# Determine environment — default to development for local runs.
-# .env may have FLASK_ENV=production which would activate Talisman and
-# break local HTTP access, so we respect it ONLY when explicitly intended.
 _flask_env = os.environ.get("FLASK_ENV", "development")
 print(f"[STARTUP] FLASK_ENV = {_flask_env!r}")
 
-# Only apply Talisman security headers in production.
-# In development the Flask dev server has no SSL certificate, so Talisman
-# would force HTTPS → ERR_SSL_PROTOCOL_ERROR / WRONG_VERSION_NUMBER.
-# Additionally, once Talisman sets HSTS headers the browser caches them and
-# ALL future requests on that host:port are auto-upgraded to HTTPS even after
-# Talisman is removed.  Changing the port is the only way to escape the cache.
 if _flask_env == "production":
     force_https = os.environ.get("FORCE_HTTPS", "false").lower() == "true"
     Talisman(
@@ -85,10 +76,9 @@ if _flask_env == "production":
         content_security_policy=csp,
         force_https=force_https
     )
-    print(f"[STARTUP] Talisman ENABLED  (force_https={force_https})")
+    print(f"[STARTUP] Talisman ENABLED (force_https={force_https})")
 else:
     print("[STARTUP] Talisman DISABLED (development mode)")
-
 
 # Flask 3.x removed JSON_SORT_KEYS config key — use DefaultJSONProvider instead
 DefaultJSONProvider.sort_keys = False
@@ -101,50 +91,124 @@ limiter = Limiter(
     storage_uri=config.RATELIMIT_STORAGE_URL,
 )
 
-PINECONE_API_KEY = config.PINECONE_API_KEY
-GEMINI_API_KEY = config.GEMINI_API_KEY
+# Lazy Model & Retriever Instances
+_embeddings = None
+_retriever = None
+_llm = None
 
-if not PINECONE_API_KEY or not GEMINI_API_KEY:
-    logger.error("Missing required API keys in environment variables")
-    raise ValueError("Please set PINECONE_API_KEY and GEMINI_API_KEY in .env file")
+def get_retriever():
+    global _embeddings, _retriever
+    if _retriever is None:
+        logger.info("Lazy initializing embeddings & Pinecone vector retriever...")
+        PINECONE_API_KEY = config.PINECONE_API_KEY
+        if not PINECONE_API_KEY:
+            raise ValueError("PINECONE_API_KEY missing in environment variables")
+        
+        _embeddings = download_hugging_face_embeddings()
+        docsearch = Pinecone.from_existing_index(
+            index_name=config.PINECONE_INDEX,
+            embedding=_embeddings
+        )
+        _retriever = docsearch.as_retriever(
+            search_type=config.RETRIEVER_SEARCH_TYPE,
+            search_kwargs={"k": config.RETRIEVER_K}
+        )
+        logger.info("Pinecone retriever initialized successfully")
+    return _retriever
 
-try:
-    embeddings = download_hugging_face_embeddings()
-    logger.info("Embeddings model loaded successfully")
-    
-    # Connect to Pinecone
-    docsearch = Pinecone.from_existing_index(
-        index_name=config.PINECONE_INDEX,
-        embedding=embeddings
-    )
-    logger.info(f"Connected to Pinecone index: {config.PINECONE_INDEX}")
-    
-    # Initialize retriever
-    retriever = docsearch.as_retriever(
-        search_type=config.RETRIEVER_SEARCH_TYPE,
-        search_kwargs={"k": config.RETRIEVER_K}
-    )
-    
-    # Initialize LLM
-    llm = ChatGoogleGenerativeAI(
-        model=config.GEMINI_MODEL,
-        temperature=config.GEMINI_TEMPERATURE,
-        max_tokens=config.GEMINI_MAX_TOKENS,
-        google_api_key=GEMINI_API_KEY
-    )
-    logger.info("Gemini model initialized successfully")
-except Exception as e:
-    logger.error(f"Initialization error: {str(e)}", exc_info=True)
-    raise
+def get_llm():
+    global _llm
+    if _llm is None:
+        logger.info("Lazy initializing Gemini LLM model...")
+        GEMINI_API_KEY = config.GEMINI_API_KEY
+        if not GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY missing in environment variables")
+            
+        _llm = ChatGoogleGenerativeAI(
+            model=config.GEMINI_MODEL,
+            temperature=config.GEMINI_TEMPERATURE,
+            max_tokens=config.GEMINI_MAX_TOKENS,
+            google_api_key=GEMINI_API_KEY
+        )
+        logger.info("Gemini model initialized successfully")
+    return _llm
 
 @app.route("/health", methods=["GET"])
 def health():
-    """Health check endpoint"""
+    """Lightweight health check endpoint for deployment port probes."""
     return jsonify({"status": "healthy"}), 200
+
 
 @app.route("/")
 def index():
     return render_template('chat.html')
+
+
+@app.route("/get_stream", methods=["POST"])
+@limiter.limit("30/minute")
+def chat_stream():
+    """Stream real-time LLM tokens and PDF document source citations via SSE."""
+    msg = request.form.get("msg", "").strip()
+    
+    if not msg:
+        return jsonify({"error": "Please enter a question."}), 400
+    
+    if len(msg) < config.MIN_MESSAGE_LENGTH:
+        return jsonify({"error": f"Message must be at least {config.MIN_MESSAGE_LENGTH} character"}), 400
+    
+    if len(msg) > config.MAX_MESSAGE_LENGTH:
+        return jsonify({"error": f"Message too long. Keep under {config.MAX_MESSAGE_LENGTH} characters."}), 400
+
+    def generate():
+        try:
+            retriever = get_retriever()
+            llm = get_llm()
+            
+            logger.info("Retrieving documents for streaming user query")
+            docs = retriever.invoke(msg)
+            logger.info(f"Retrieved {len(docs)} documents from Pinecone")
+            
+            # Format source document citations
+            sources = []
+            if docs:
+                for idx, doc in enumerate(docs, 1):
+                    raw_src = doc.metadata.get("source", "Medical Reference PDF")
+                    src_filename = os.path.basename(str(raw_src))
+                    page_num = doc.metadata.get("page")
+                    page_label = f", Page {int(page_num) + 1}" if page_num is not None else ""
+                    snippet = doc.page_content[:160].strip().replace("\n", " ") + "..."
+                    
+                    sources.append({
+                        "id": idx,
+                        "title": f"{src_filename}{page_label}",
+                        "snippet": snippet
+                    })
+            
+            # Send initial sources payload
+            yield f"event: sources\ndata: {json.dumps({'sources': sources})}\n\n"
+            
+            if not docs:
+                fallback_msg = "I couldn't find relevant medical information in the PDF database for your question. Please consult a healthcare professional."
+                yield f"event: token\ndata: {json.dumps({'token': fallback_msg})}\n\n"
+                yield f"event: done\ndata: {json.dumps({'status': 'complete'})}\n\n"
+                return
+            
+            context = "\n\n".join([f"[Source {i+1}]: {doc.page_content}" for i, doc in enumerate(docs)])
+            full_prompt = system_prompt.replace("{context}", context) + f"\n\nUser Question: {msg}\n\nAnswer:"
+            
+            logger.info("Streaming Gemini LLM tokens...")
+            for chunk in llm.stream(full_prompt):
+                if chunk.content:
+                    yield f"event: token\ndata: {json.dumps({'token': chunk.content})}\n\n"
+            
+            yield f"event: done\ndata: {json.dumps({'status': 'complete'})}\n\n"
+            logger.info("Token streaming completed successfully")
+            
+        except Exception as e:
+            logger.error(f"Error in streaming endpoint: {str(e)}", exc_info=True)
+            yield f"event: error\ndata: {json.dumps({'error': 'An error occurred while streaming the answer. Please try again.'})}\n\n"
+
+    return Response(stream_with_context(generate()), content_type="text/event-stream")
 
 
 @app.route("/get", methods=["POST"])
@@ -153,42 +217,29 @@ def chat():
     try:
         msg = request.form.get("msg", "").strip()
         
-        # Validate message
         if not msg:
             return jsonify({"error": "Please enter a message"}), 400
         
-        if len(msg) < config.MIN_MESSAGE_LENGTH:
-            return jsonify({"error": f"Message must be at least {config.MIN_MESSAGE_LENGTH} character"}), 400
+        if len(msg) < config.MIN_MESSAGE_LENGTH or len(msg) > config.MAX_MESSAGE_LENGTH:
+            return jsonify({"error": "Invalid message length"}), 400
         
-        if len(msg) > config.MAX_MESSAGE_LENGTH:
-            return jsonify({"error": f"Message too long. Please keep it under {config.MAX_MESSAGE_LENGTH} characters."}), 400
+        retriever = get_retriever()
+        llm = get_llm()
         
-        logger.info("Processing user question")
-        
-        # Get relevant documents
         docs = retriever.invoke(msg)
-        logger.info(f"Retrieved {len(docs)} documents")
-        
         if not docs:
-            logger.warning("No documents retrieved from Pinecone")
-            return jsonify({
-                "answer": "I couldn't find relevant information to answer your question. "
-                         "Please try rephrasing or consult with a healthcare professional."
-            }), 200
+            return jsonify({"answer": "I couldn't find relevant information in the medical database."}), 200
         
         context = "\n\n".join([doc.page_content for doc in docs])
         full_prompt = system_prompt.replace("{context}", context) + f"\n\nQuestion: {msg}\n\nAnswer:"
         
-        # Get response from LLM
         response = llm.invoke(full_prompt)
-        answer = response.content
-        
-        logger.info("Response generated successfully")
-        return jsonify({"answer": str(answer)}), 200
+        return jsonify({"answer": str(response.content)}), 200
         
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}", exc_info=True)
-        return jsonify({"error": "An error occurred while processing your request. Please try again."}), 500
+        return jsonify({"error": "An error occurred while processing your request."}), 500
+
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
