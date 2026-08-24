@@ -86,3 +86,4 @@
 2026-08-23 20:08:19,771 - __main__ - INFO - Embeddings model loaded successfully
 2026-08-23 20:08:22,927 - __main__ - INFO - Connected to Pinecone index: medicalbot
 2026-08-23 20:08:22,972 - __main__ - INFO - Gemini model initialized successfully
+2026-08-23 23:21:57,338 - __main__ - WARNING - 404 error: /favicon.ico

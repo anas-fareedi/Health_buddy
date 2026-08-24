@@ -26,27 +26,17 @@ def text_split(extracted_data: List) -> List:
 
 # Download the Embeddings from HuggingFace 
 def download_hugging_face_embeddings():
-    """Initialize embeddings model (384 dimensions). Uses HF Inference API if HF_TOKEN is set, else lazy loads local model.
-    
-    On Render (512MB RAM), PyTorch cannot be loaded locally — HF_TOKEN is required.
-    """
+    """Initialize embeddings model (384 dimensions). Try HuggingFace Endpoint if token set, else load local HuggingFaceEmbeddings model."""
     hf_token = os.environ.get("HF_TOKEN")
     if hf_token:
-        from langchain_huggingface import HuggingFaceEndpointEmbeddings
-        # Do NOT catch exceptions here — if the API fails, we want a loud error
-        # instead of silently falling back to the local model (which OOMs on Render).
-        return HuggingFaceEndpointEmbeddings(
-            model="sentence-transformers/all-MiniLM-L6-v2",
-            huggingfacehub_api_token=hf_token
-        )
+        try:
+            from langchain_huggingface import HuggingFaceEndpointEmbeddings
+            return HuggingFaceEndpointEmbeddings(
+                model="sentence-transformers/all-MiniLM-L6-v2",
+                huggingfacehub_api_token=hf_token
+            )
+        except Exception:
+            pass
 
-    # Fallback: load model locally (requires torch + sentence-transformers)
-    try:
-        from langchain_huggingface import HuggingFaceEmbeddings
-        return HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
-    except ImportError:
-        raise RuntimeError(
-            "HF_TOKEN is not set and torch/sentence-transformers are not installed. "
-            "On Render's free tier, set HF_TOKEN to use the HuggingFace Inference API. "
-            "Get a free token at https://huggingface.co/settings/tokens"
-        )
+    from langchain_huggingface import HuggingFaceEmbeddings
+    return HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')

@@ -25,9 +25,9 @@ RUN useradd -m -u 1000 appuser
 # Copy requirements file (Render-specific: excludes PyTorch to stay under 512MB)
 COPY requirements-render.txt .
 
-# Install Python dependencies
+# Install Python dependencies (using PyTorch CPU wheel index for fast builds & low memory)
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements-render.txt
+    pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-render.txt
 
 # Copy application code and ensure appuser owns everything
 COPY --chown=appuser:appuser . .
