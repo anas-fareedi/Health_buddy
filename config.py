@@ -21,7 +21,10 @@ class Config:
     PINECONE_INDEX = os.environ.get("PINECONE_INDEX", "medicalbot")
     GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
     GEMINI_TEMPERATURE = 0.1
-    GEMINI_MAX_TOKENS = 6000
+    GEMINI_MAX_TOKENS = 2048
+    
+    # PDF Upload Configuration
+    MAX_PDF_SIZE_MB = 20
     
     # Vector Retrieval Configuration
     RETRIEVER_SEARCH_TYPE = "similarity"
@@ -40,7 +43,7 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SAMESITE = 'Strict'  # tighter CSRF protection
     
     # Rate Limiting (requests per hour)
     RATELIMIT_ENABLED = True
@@ -62,8 +65,9 @@ class ProductionConfig(Config):
     
     def __init__(self):
         super().__init__()
-        if not self.SECRET_KEY:
-            raise ValueError("SECRET_KEY environment variable must be set in production")
+        # Disallow DEBUG mode in production
+        if self.DEBUG:
+            raise ValueError("DEBUG must be False in production")
 
 
 
@@ -84,3 +88,4 @@ def get_config():
         return TestingConfig()
     else:
         return ProductionConfig()
+

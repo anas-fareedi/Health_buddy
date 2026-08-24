@@ -1,18 +1,20 @@
 import os
 import sys
 import json
+import tempfile
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
 from flask import Flask, render_template, jsonify, request, abort, Response, stream_with_context
+from werkzeug.utils import secure_filename
 from flask.json.provider import DefaultJSONProvider
 from flask_talisman import Talisman
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-from src.helper import download_hugging_face_embeddings
+from src.helper import download_hugging_face_embeddings, load_pdf_file, text_split
 from langchain_pinecone import Pinecone
 from langchain_google_genai import ChatGoogleGenerativeAI
 from src.prompt import *
@@ -77,7 +79,8 @@ csp = {
         'https://cdn-icons-png.flaticon.com',
         'https://i.ibb.co',
         'data:'
-    ]
+    ],
+    'connect-src': "'self'"
 }
 
 _flask_env = os.environ.get("FLASK_ENV", "development")
@@ -104,6 +107,24 @@ limiter = Limiter(
     default_limits=[config.RATELIMIT_DEFAULT],
     storage_uri=config.RATELIMIT_STORAGE_URL,
 )
+
+
+def _extract_text(content):
+    """Extract plain text from Gemini response content.
+    
+    Newer Gemini models (e.g. gemini-3.1-flash-lite) may return content as a
+    list of content-block dicts like [{'type': 'text', 'text': '...', ...}]
+    instead of a plain string.  This helper normalises both formats.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+        )
+    return str(content)
+
 
 # Lazy Model & Retriever Instances
 _embeddings = None
@@ -227,7 +248,9 @@ def chat_stream():
             logger.info("Streaming Gemini LLM tokens...")
             for chunk in llm.stream(full_prompt):
                 if chunk.content:
-                    yield f"event: token\ndata: {json.dumps({'token': chunk.content})}\n\n"
+                    token_text = _extract_text(chunk.content)
+                    if token_text:
+                        yield f"event: token\ndata: {json.dumps({'token': token_text})}\n\n"
             
             yield f"event: done\ndata: {json.dumps({'status': 'complete'})}\n\n"
             logger.info("Token streaming completed successfully")
@@ -262,11 +285,78 @@ def chat():
         full_prompt = system_prompt.replace("{context}", context) + f"\n\nQuestion: {msg}\n\nAnswer:"
         
         response = llm.invoke(full_prompt)
-        return jsonify({"answer": str(response.content)}), 200
+        return jsonify({"answer": _extract_text(response.content)}), 200
         
     except Exception as e:
         logger.error(f"Error in chat endpoint [{type(e).__name__}]: {str(e)}", exc_info=True)
-        return jsonify({"error": f"Server error: {type(e).__name__}: {str(e)}"}), 500
+        return jsonify({"error": "An error occurred while processing your request. Please try again."}), 500
+
+
+@app.route("/upload_pdf", methods=["POST"])
+@limiter.limit("5/minute")
+def upload_pdf():
+    """Accept a user-uploaded PDF, split it, embed it, and upsert into Pinecone."""
+    if "pdf" not in request.files:
+        return jsonify({"error": "No PDF file provided."}), 400
+
+    file = request.files["pdf"]
+    if file.filename == "":
+        return jsonify({"error": "No file selected."}), 400
+
+    filename = secure_filename(file.filename)
+    if not filename.lower().endswith(".pdf"):
+        return jsonify({"error": "Only PDF files are allowed."}), 400
+
+    # Size check (read into memory to measure)
+    file_bytes = file.read()
+    max_bytes = config.MAX_PDF_SIZE_MB * 1024 * 1024
+    if len(file_bytes) > max_bytes:
+        return jsonify({"error": f"File too large. Maximum size is {config.MAX_PDF_SIZE_MB} MB."}), 400
+
+    # Write to a temp directory so PyPDFLoader can read it
+    tmp_dir = tempfile.mkdtemp(prefix="healthbuddy_")
+    tmp_path = os.path.join(tmp_dir, filename)
+    try:
+        with open(tmp_path, "wb") as f:
+            f.write(file_bytes)
+
+        logger.info(f"Processing uploaded PDF: {filename} ({len(file_bytes)} bytes)")
+
+        # Re-use the existing ingestion pipeline
+        from langchain_community.document_loaders import PyPDFLoader
+        loader = PyPDFLoader(tmp_path)
+        documents = loader.load()
+
+        if not documents:
+            return jsonify({"error": "Could not extract any text from the PDF."}), 400
+
+        text_chunks = text_split(documents)
+        logger.info(f"Split into {len(text_chunks)} chunks")
+
+        embeddings = download_hugging_face_embeddings()
+        Pinecone.from_documents(
+            documents=text_chunks,
+            index_name=config.PINECONE_INDEX,
+            embedding=embeddings,
+        )
+
+        logger.info(f"PDF '{filename}' ingested into Pinecone ({len(text_chunks)} vectors)")
+        return jsonify({
+            "success": True,
+            "message": f"'{filename}' uploaded successfully! {len(text_chunks)} sections indexed.",
+            "chunks": len(text_chunks),
+        }), 200
+
+    except Exception as e:
+        logger.error(f"PDF upload error: {str(e)}", exc_info=True)
+        return jsonify({"error": f"Failed to process PDF: {str(e)}"}), 500
+    finally:
+        # Cleanup temp file
+        try:
+            os.remove(tmp_path)
+            os.rmdir(tmp_dir)
+        except OSError:
+            pass
 
 
 @app.errorhandler(429)

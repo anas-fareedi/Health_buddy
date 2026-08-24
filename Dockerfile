@@ -40,7 +40,7 @@ USER appuser
 EXPOSE 8080
 
 # Health check using dynamic PORT environment variable
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python -c "import os, urllib.request; port=os.environ.get('PORT', '8080'); urllib.request.urlopen(f'http://localhost:{port}/health', timeout=5)" || exit 1
 
 # Run with gunicorn:
