@@ -53,6 +53,7 @@ csp = {
     'default-src': "'self'",
     'style-src': [
         "'self'",
+        "'unsafe-inline'",
         'https://fonts.googleapis.com',
         'https://cdnjs.cloudflare.com',
         'https://cdn.jsdelivr.net',
@@ -157,6 +158,20 @@ def index():
     return render_template('chat.html')
 
 
+@app.route("/debug-env", methods=["GET"])
+def debug_env():
+    """Diagnostic endpoint — reports whether required env vars are present (not their values)."""
+    keys = ["PINECONE_API_KEY", "GEMINI_API_KEY", "HF_TOKEN", "PINECONE_INDEX", "FLASK_ENV", "SECRET_KEY"]
+    status = {}
+    for k in keys:
+        val = os.environ.get(k)
+        if val:
+            status[k] = f"SET ({len(val)} chars)"
+        else:
+            status[k] = "MISSING"
+    return jsonify(status), 200
+
+
 @app.route("/get_stream", methods=["POST"])
 @limiter.limit("30/minute")
 def chat_stream():
@@ -250,8 +265,8 @@ def chat():
         return jsonify({"answer": str(response.content)}), 200
         
     except Exception as e:
-        logger.error(f"Error in chat endpoint: {str(e)}", exc_info=True)
-        return jsonify({"error": "An error occurred while processing your request."}), 500
+        logger.error(f"Error in chat endpoint [{type(e).__name__}]: {str(e)}", exc_info=True)
+        return jsonify({"error": f"Server error: {type(e).__name__}: {str(e)}"}), 500
 
 
 @app.errorhandler(429)
