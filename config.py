@@ -19,7 +19,7 @@ class Config:
     
     # Model Configuration
     PINECONE_INDEX = os.environ.get("PINECONE_INDEX", "medicalbot")
-    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
     GEMINI_TEMPERATURE = 0.1
     GEMINI_MAX_TOKENS = 6000
     
